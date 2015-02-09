@@ -7,6 +7,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import com.flickr4java.flickr.FlickrException;
+import com.flickr4java.flickr.auth.Permission;
 import com.flickr4java.flickr.photos.Photo;
 import com.flickr4java.flickr.photos.PhotoContext;
 import com.flickr4java.flickr.photos.PhotoList;
@@ -14,10 +15,12 @@ import com.flickr4java.flickr.photosets.Photoset;
 import com.flickr4java.flickr.photosets.Photosets;
 import com.flickr4java.flickr.photosets.PhotosetsInterface;
 
+import org.apache.log4j.Logger;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
@@ -25,6 +28,8 @@ import java.util.List;
  * @author Anthony Eden
  */
 public class PhotosetsInterfaceTest extends Flickr4JavaTest {
+
+    private static Logger _log = Logger.getLogger(PhotosetsInterfaceTest.class);
 
     private Photoset testSet;
 
@@ -45,6 +50,8 @@ public class PhotosetsInterfaceTest extends Flickr4JavaTest {
 
     @After
     public void tearDown() throws FlickrException {
+        setAuth(Permission.DELETE);
+
         PhotosetsInterface iface = flickr.getPhotosetsInterface();
         iface.delete(testSet.getId());
     }
@@ -93,9 +100,11 @@ public class PhotosetsInterfaceTest extends Flickr4JavaTest {
 
     @Test
     public void testGetInfo() throws FlickrException {
+        clearAuth();
+
         PhotosetsInterface iface = flickr.getPhotosetsInterface();
         Photoset photoset = iface.getInfo(testProperties.getPhotosetId());
-        System.err.println(photoset.getUrl());
+        _log.debug(photoset.getUrl());
         assertNotNull(photoset);
         assertNotNull(photoset.getPrimaryPhoto());
         assertTrue(photoset.getPhotoCount() >= 1);
@@ -110,10 +119,17 @@ public class PhotosetsInterfaceTest extends Flickr4JavaTest {
     }
 
     @Test
-    public void testGetList2() throws FlickrException {
+    public void testGetListWithExtras() throws FlickrException {
         PhotosetsInterface iface = flickr.getPhotosetsInterface();
-        Photosets photosets = iface.getList("26095690@N00");
+        Photosets photosets = iface.getList(testProperties.getNsid(), "last_update, owner_name");
         assertNotNull(photosets);
+        Collection<Photoset> photosetsList = photosets.getPhotosets();
+        assertFalse(photosetsList.isEmpty());
+        Photoset photoset = photosetsList.iterator().next();
+        assertNotNull(photoset.getPrimaryPhoto().getLastUpdate());
+        assertNotNull(photoset.getPrimaryPhoto().getOwner());
+        assertNotNull(photoset.getPrimaryPhoto().getOwner().getUsername());
+        assertTrue(photoset.getPrimaryPhoto().getOwner().getUsername().length() > 0);
     }
 
     @Test
@@ -122,7 +138,7 @@ public class PhotosetsInterfaceTest extends Flickr4JavaTest {
         PhotoList<Photo> photos = iface.getPhotos(testProperties.getPhotosetId(), 10, 1);
         assertNotNull(photos);
         assertTrue(photos.size() >= 1);
-        assertEquals(testProperties.getDisplayname(), photos.get(0).getOwner().getUsername());
+        assertEquals(testProperties.getUsername(), photos.get(0).getOwner().getUsername());
         assertEquals(testProperties.getNsid(), photos.get(0).getOwner().getId());
     }
 
